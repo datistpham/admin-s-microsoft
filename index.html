@@ -143,10 +143,14 @@
             <label for="product-price">Link app:</label>
             <input
               class="form-control"
-              type="text"
               id="product-price"
               required
+              type="file"
             />
+            <button class="btn btn-primary mt-2 mb-2" onclick="uploadFile()">
+              Upload
+            </button>
+            <progress value="0" max="100" id="uploader">0%</progress>
           </div>
 
           <div class="form-group">
@@ -201,9 +205,9 @@
             <label for="edit-product-price">Link app:</label>
             <input
               class="form-control"
-              type="text"
               id="edit-product-price"
               required
+              type="file"
             />
           </div>
           <button type="submit" class="btn btn-primary">Lưu</button>
@@ -267,15 +271,15 @@
     <script>
       // Cấu hình Firebase (thay thế bằng thông tin cấu hình của bạn)
       const firebaseConfig = {
-        apiKey: "AIzaSyANSwlR-gyTKxCBCdhhWHgbB5Fg5-ODJ3c",
-        authDomain: "tourism-de1ac.firebaseapp.com",
-        projectId: "tourism-de1ac",
-        storageBucket: "tourism-de1ac.appspot.com",
-        messagingSenderId: "204093368364",
-        appId: "1:204093368364:web:88baf7f0e2582e3f4cc989",
-        measurementId: "G-XVC8PLLSJF",
+        apiKey: "AIzaSyC0WgHxUJYxtKHJscqxsXmD2gr64J9nnAw",
+        authDomain: "call-e7189.firebaseapp.com",
         databaseURL:
-          "https://tourism-de1ac-default-rtdb.asia-southeast1.firebasedatabase.app",
+          "https://call-e7189-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "call-e7189",
+        storageBucket: "call-e7189.appspot.com",
+        messagingSenderId: "729938965315",
+        appId: "1:729938965315:web:99d20c6ce3fcb4f57af5f6",
+        measurementId: "G-BK01KVL8V8",
       };
 
       // Khởi tạo Firebase
@@ -288,6 +292,40 @@
       // Firebase Storage reference
       const storage = firebase.storage();
       const storageRef = storage.ref();
+      //
+      async function uploadFile() {
+        try {
+          var fileInput = document.getElementById("product-price");
+          var file = fileInput.files[0];
+          var storageRef = storage.ref();
+          var fileRef = storageRef.child("uploads/" + file.name);
+
+          var snapshot = await fileRef.put(file);
+          var downloadURL = await snapshot.ref.getDownloadURL();
+
+          return downloadURL;
+        } catch (error) {
+          // Handle errors here
+          console.error("Upload failed: ", error);
+        }
+      }
+      //
+      async function uploadFile2() {
+        try {
+          var fileInput = document.getElementById("edit-product-price");
+          var file = fileInput.files[0];
+          var storageRef = storage.ref();
+          var fileRef = storageRef.child("uploads/" + file.name);
+
+          var snapshot = await fileRef.put(file);
+          var downloadURL = await snapshot.ref.getDownloadURL();
+
+          return downloadURL;
+        } catch (error) {
+          // Handle errors here
+          console.error("Upload failed: ", error);
+        }
+      }
 
       // Hàm để thêm app mới
       function addProduct() {
@@ -309,16 +347,17 @@
             const imageRef = storageRef.child(`images/${imageId}.jpg`);
 
             imageRef.put(imageFile).then((snapshot) => {
-              snapshot.ref.getDownloadURL().then((downloadURL) => {
+              snapshot.ref.getDownloadURL().then(async (downloadURL) => {
                 imageUrls.push(downloadURL);
 
                 uploadedCount++;
 
                 // Nếu đã tải lên tất cả ảnh, thì thêm app vào Firebase Realtime Database
                 if (uploadedCount === imageFiles.length) {
+                  const price1 = await uploadFile();
                   const product = {
                     name,
-                    price,
+                    price: price1,
                     imageUrls,
                     productId: Date.now() + Math.random(10000, 99999),
                   };
@@ -378,10 +417,12 @@
       }
 
       // Sử dụng Firebase để lắng nghe sự thay đổi trong danh sách app và cập nhật giao diện
+      let pArr = [];
       productsRef.on("value", (snapshot) => {
         const productsObject = snapshot.val();
         if (productsObject) {
           const productsArray = Object.values(productsObject);
+          pArr = productsObject;
           productList.innerHTML = ""; // Xóa danh sách app hiện tại
 
           productsArray.reverse().forEach((product, index) => {
@@ -395,8 +436,8 @@
 
             li.innerHTML = `
                             ${imageHtml}
-                            <span>${product.name} - Link app: ${product.price} đ</span>
-                            <button class="btn btn-success ml-2" onclick="openEditPopup('${product.productId}', '${product.name}', '${product.price}')">Sửa</button>
+                            <span>Tên app: ${product.name} - Link app: ${product.price}</span>
+                            <button class="btn btn-success ml-2" onclick="openEditPopup(${product.productId}, '${product.name}', '${product.price}', '${product.imageUrls?.[0]}')">Sửa</button>
                             <button class="btn btn-danger ml-2" onclick="deleteProduct('${product.productId}')">Xoá</button>
                         `;
 
@@ -511,34 +552,96 @@
       });
       //
       // Function to open edit popup and fill in product details
-      function openEditPopup(productId, productName, productPrice) {
+      async function openEditPopup(
+        productId,
+        productName,
+        productPrice,
+        productImage
+      ) {
         const editProductNameInput =
           document.getElementById("edit-product-name");
         const editProductPriceInput =
           document.getElementById("edit-product-price");
 
         editProductNameInput.value = productName;
-        editProductPriceInput.value = productPrice;
 
         const editForm = document.getElementById("edit-product-form");
-        editForm.onsubmit = function (event) {
+        editForm.onsubmit = async function (event) {
           event.preventDefault();
-          const productToUpdate = productsArray.find(
-            (product) => product.productId == productId
-          );
+          var fileInput = document.getElementById("edit-product-price");
+          var file = fileInput.files[0];
+
+          // const productToUpdate = Object.values(pArr).find(
+          //   (product) => product.productId == productId
+          // );
+          // console.log(Object.keys(pArr))
+          // console.log(productToUpdate)
           const updatedName = editProductNameInput.value;
-          const updatedPrice = editProductPriceInput.value;
           // Tạo object mới chứa thông tin sản phẩm cần cập nhật
-          const updatedProductData = {
-            productId: productId,
-            name: updatedName,
-            price: updatedPrice,
-          };
-          // Perform update operation using updatedName and updatedPrice
-          const productRef = productsRef.child(productToUpdate.key);
-          productRef.set(updatedProductData);
-          // Close the edit popup after updating
-          closeEditPopup();
+          if (!file) {
+            const updatedProductData = {
+              productId: productId,
+              name: productName,
+              price: productPrice,
+              imgaeUrls: [productImage],
+            };
+            // Perform update operation using updatedName and updatedPrice
+            productsRef
+              .equalTo(productId.toString())
+              .once("value", function (snapshot) {
+                snapshot.forEach(function (childSnapshot) {
+                  // Get the key of the product to update
+                  var productKey = childSnapshot.key;
+                  productsRef
+                    .child(productKey)
+                    .update(updatedProductData)
+                    .then(function () {
+                      console.log("Product updated successfully!");
+                      closeEditPopup();
+                    })
+                    .catch(function (error) {
+                      console.error("Error updating product: ", error);
+                      alert("Lỗi");
+                    });
+                });
+              });
+
+            // Close the edit popup after updating
+          } else {
+            console.log(1)
+            const newFile = await uploadFile2();
+            const updatedProductData = {
+              productId: productId,
+              name: updatedName,
+              price: newFile,
+              imgaeUrls: [productImage],
+            };
+            // Perform update operation using updatedName and updatedPrice
+            productsRef
+            .orderByChild('productId')
+              .equalTo(productId)
+              .once("value", function (snapshot) {
+                snapshot.forEach(function (childSnapshot) {
+                  // Get the key of the product to update
+                  var productKey = childSnapshot.key;
+                  console.log("productKey", productKey)
+                  productsRef
+                    .child(productKey)
+                    .update(updatedProductData)
+                    .then(function () {
+                      console.log("Product updated successfully!");
+                      closeEditPopup();
+                    })
+                    .catch(function (error) {
+                      console.error("Error updating product: ", error);
+                      alert("Lỗi");
+                    });
+                });
+              });
+
+            // Close the edit popup after updating
+            closeEditPopup();
+          }
         };
 
         const editPopup = document.getElementById("edit-popup");
@@ -551,19 +654,6 @@
         editPopup.style.display = "none";
       }
       // Xử lý sự kiện khi người dùng nhấp vào nút "Sửa"
-      document
-        .getElementById("product-list")
-        .addEventListener("click", function (event) {
-          if (event.target.classList.contains("edit-button")) {
-            const productId = event.target.getAttribute("data-id");
-            const productToEdit = productsArray.find(
-              (product) => product.productId == productId
-            );
-
-            // Mở popup chỉnh sửa với thông tin sản phẩm hiện tại
-            openEditPopup(productId, productToEdit.name, productToEdit.price);
-          }
-        });
     </script>
     <style>
       /* CSS cho danh sách xem trước ảnh */
