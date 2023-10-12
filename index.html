@@ -396,7 +396,7 @@
             li.innerHTML = `
                             ${imageHtml}
                             <span>${product.name} - Link app: ${product.price} đ</span>
-                            <button class="btn btn-danger ml-2" onclick="updateProduct('${product.productId}')">Sửa</button>
+                            <button class="btn btn-success ml-2" onclick="openEditPopup('${product.productId}', '${product.name}', '${product.price}')">Sửa</button>
                             <button class="btn btn-danger ml-2" onclick="deleteProduct('${product.productId}')">Xoá</button>
                         `;
 
@@ -523,11 +523,20 @@
         const editForm = document.getElementById("edit-product-form");
         editForm.onsubmit = function (event) {
           event.preventDefault();
+          const productToUpdate = productsArray.find(
+            (product) => product.productId == productId
+          );
           const updatedName = editProductNameInput.value;
           const updatedPrice = editProductPriceInput.value;
-
+          // Tạo object mới chứa thông tin sản phẩm cần cập nhật
+          const updatedProductData = {
+            productId: productId,
+            name: updatedName,
+            price: updatedPrice,
+          };
           // Perform update operation using updatedName and updatedPrice
-
+          const productRef = productsRef.child(productToUpdate.key);
+          productRef.set(updatedProductData);
           // Close the edit popup after updating
           closeEditPopup();
         };
